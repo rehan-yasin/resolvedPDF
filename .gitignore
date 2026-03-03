@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+venv/
+.env
+
+# Usage data (don't commit user data)
+webapp/.usage_data.json
+
+# Generated PDFs (don't commit output files)
+*.pdf
+
+# VS Code
+.vscode/settings.json
+
+# Node (for VS Code extension)
+node_modules/
+*.vsix
+
+# OS
+.DS_Store
+Thumbs.db

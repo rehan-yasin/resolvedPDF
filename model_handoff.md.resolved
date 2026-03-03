@@ -1,0 +1,252 @@
+# Green AI — Crop Disease Detection
+## Model Handoff Document · v1.0 · March 2026
+
+**From:** AI/ML Team
+**For:** Android & iOS Development Team
+**Status:** Models trained, quantized, and ready for integration
+
+---
+
+## 1. What This System Does
+
+A **two-stage on-device AI pipeline** that identifies crop diseases from a single leaf photograph. Fully offline — no internet required at inference time.
+
+**User flow:**
+1. Farmer opens app → selects crop type (Citrus / Rice / Sugarcane)
+2. Takes a photo of the leaf
+3. App runs Stage 1 → determines if diseased
+4. If diseased, runs Stage 2 → identifies the specific disease
+5. Result displayed with confidence score
+
+---
+
+## 2. Files to Deliver
+
+Hand the mobile team this exact set of files:
+
+| File | Size | Use |
+|---|---|---|
+| `stage1_quantized.ptl` | ~4.5 MB | Android + iOS (PyTorch Mobile) |
+| `stage2_quantized.ptl` | ~21 MB | Android + iOS (PyTorch Mobile) |
+| `stage1.onnx` | ~17 MB | Alternative (ONNX Runtime) |
+| `stage2.onnx` | ~82 MB | Alternative (ONNX Runtime) |
+| [inference_config.json](file:///c:/Users/rehan/OneDrive/Desktop/Green%20AI/Models/Crop%20Disease%20Detection/inference_config.json) | < 1 KB | Class list, preprocessing params, crop map |
+
+> **Recommended format:** `.ptl` (PyTorch Mobile Lite) — already optimised and fused for mobile. Use `.onnx` only if the team prefers ONNX Runtime.
+
+All files are in the `logs/` folder of the training project.
+
+---
+
+## 3. Model Specifications
+
+### Stage 1 — Binary Classifier (Healthy vs Diseased)
+
+| Property | Value |
+|---|---|
+| Architecture | MobileNetV3-Large |
+| Parameters | 5.4 Million |
+| Input | `[1, 3, 224, 224]` (batch, RGB, H, W) |
+| Output | `[1, 2]` — logits for [Diseased, Healthy] |
+| Class index 0 | Diseased |
+| Class index 1 | Healthy |
+| Validation accuracy | **99.57%** |
+| Format | FP32 trained → INT8 quantized |
+
+### Stage 2 — Disease Classifier (13 Classes)
+
+| Property | Value |
+|---|---|
+| Architecture | EfficientNetV2-S |
+| Parameters | 20.2 Million |
+| Input | `[1, 3, 224, 224]` (same as Stage 1) |
+| Output | `[1, 13]` — logits for 13 disease classes |
+| Test accuracy | **85.0%** (190 test images) |
+| Format | FP32 trained → INT8 quantized |
+
+### Stage 2 — Class Index Table
+
+| Index | Class Name | Crop |
+|---|---|---|
+| 0 | Citrus_blossomendrot | citrus |
+| 1 | Citrus_canker | citrus |
+| 2 | Citrus_leafminer | citrus |
+| 3 | Citrus_scab | citrus |
+| 4 | Rice_brownleafspot | rice |
+| 5 | Rice_falsesmut | rice |
+| 6 | Rice_leafblight | rice |
+| 7 | Rice_planthopper | rice |
+| 8 | Sugarcane_brownspot | sugarcane |
+| 9 | Sugarcane_eyespot | sugarcane |
+| 10 | Sugarcane_redrot | sugarcane |
+| 11 | Sugarcane_ringspot | sugarcane |
+| 12 | Sugarcane_smut | sugarcane |
+
+> **Important:** Indices are fixed and sorted alphabetically. Do not reorder.
+
+---
+
+## 4. Preprocessing — Must Be Exact
+
+Both Stage 1 and Stage 2 use **identical preprocessing**. Wrong values will silently produce garbage predictions.
+
+```
+1. Load image as RGB (not BGR)
+2. Resize to 224 × 224 pixels  (bilinear interpolation)
+3. Convert pixels to float32, divide by 255.0  → range [0.0, 1.0]
+4. Normalize each channel:
+     R = (R - 0.485) / 0.229
+     G = (G - 0.456) / 0.224
+     B = (B - 0.406) / 0.225
+5. Shape: [1, 3, 224, 224]  (batch=1, channels first)
+```
+
+These are **standard ImageNet normalization values** — any ML library will have this as a preset.
+
+---
+
+## 5. Inference Logic — Step by Step
+
+```
+INPUT: image (JPEG/PNG from camera), crop_type ("citrus" | "rice" | "sugarcane")
+
+STEP 1: Preprocess image → tensor [1, 3, 224, 224]
+
+STEP 2: Run Stage 1
+  → logits = stage1_model.forward(tensor)  → shape [1, 2]
+  → probs  = softmax(logits)
+  → p_diseased = probs[0][0]
+  → p_healthy  = probs[0][1]
+
+STEP 3: Gate
+  IF p_healthy >= 0.5:
+    RETURN { result: "healthy", confidence: p_healthy × 100 }
+
+STEP 4: Run Stage 2 (only if diseased)
+  → logits = stage2_model.forward(tensor)  → shape [1, 13]
+  → all_probs = softmax(logits)            → 13 values summing to 1.0
+
+STEP 5: Filter by crop type
+  → Use inference_config.json → crop_disease_map[crop_type]
+    to get list of relevant class names
+  → Get their indices from class_list_sorted
+  → Extract only those probability values
+
+STEP 6: Re-normalise
+  → filtered_probs = filtered_probs / sum(filtered_probs)
+
+STEP 7: Return result
+  → top_class = argmax(filtered_probs)
+  → disease_name = class_list_sorted[top_class_index]
+  RETURN {
+    result: "diseased",
+    disease: disease_name,
+    confidence: top_prob × 100,
+    all_probabilities: { disease_name: prob, ... }
+  }
+```
+
+---
+
+## 6. Platform Integration
+
+### Android — PyTorch Mobile
+
+```kotlin
+// Dependency
+implementation("org.pytorch:pytorch_android_lite:2.1.0")
+
+// Load models (place .ptl files in assets/)
+val stage1 = LiteModuleLoader.load(assetFilePath("stage1_quantized.ptl"))
+val stage2 = LiteModuleLoader.load(assetFilePath("stage2_quantized.ptl"))
+
+// Preprocess (use torchvision transforms or manual)
+val inputTensor = TensorImageUtils.bitmapToFloat32Tensor(
+    bitmap,
+    floatArrayOf(0.485f, 0.456f, 0.406f),   // mean
+    floatArrayOf(0.229f, 0.224f, 0.225f)    // std
+)
+
+// Forward pass
+val outputStage1 = stage1.forward(IValue.from(inputTensor)).toTensor()
+```
+
+### iOS — LibTorch
+
+```swift
+// Dependency: add pytorch_ios pod via CocoaPods
+// pod 'LibTorch-Lite', '~> 2.1.0'
+
+// Load model
+let stage1 = TorchModule.load(filePath("stage1_quantized"))
+let stage2 = TorchModule.load(filePath("stage2_quantized"))
+
+// Input: Float32 array, shape [1, 3, 224, 224], ImageNet-normalized
+let inputData: [Float] = preprocessImage(uiImage)
+let result = stage1.predict(image: &inputData)
+```
+
+### Offline Storage
+
+- Bundle `.ptl` files inside the app binary (in `assets/` on Android, app bundle on iOS)
+- No network call required at inference time
+- [inference_config.json](file:///c:/Users/rehan/OneDrive/Desktop/Green%20AI/Models/Crop%20Disease%20Detection/inference_config.json) should also be bundled — read class names and crop map from it, not hardcoded
+
+---
+
+## 7. Output Format (Suggested API Contract)
+
+```json
+{
+  "result": "diseased",
+  "disease": "Rice_brownleafspot",
+  "confidence": 91.3,
+  "crop": "rice",
+  "stage1_confidence": 94.0,
+  "all_probabilities": {
+    "Rice_brownleafspot": 0.913,
+    "Rice_falsesmut": 0.051,
+    "Rice_leafblight": 0.024,
+    "Rice_planthopper": 0.012
+  }
+}
+```
+```json
+{
+  "result": "healthy",
+  "disease": null,
+  "confidence": 97.2,
+  "crop": "citrus"
+}
+```
+
+---
+
+## 8. Model Update Protocol
+
+When the AI team releases a new model version (after collecting more field data):
+
+1. AI team provides new `.ptl` and `.onnx` files with a version tag (e.g., `v1.1`)
+2. AI team also provides updated [inference_config.json](file:///c:/Users/rehan/OneDrive/Desktop/Green%20AI/Models/Crop%20Disease%20Detection/inference_config.json) if new diseases/crops were added
+3. Mobile team replaces the bundled files in the app and re-releases
+4. The class index table in this document will be updated with each release
+
+> **No code logic changes are needed** when new diseases are added to existing crops — only [inference_config.json](file:///c:/Users/rehan/OneDrive/Desktop/Green%20AI/Models/Crop%20Disease%20Detection/inference_config.json) changes. Code changes are only required if a completely new crop type is added.
+
+---
+
+## 9. Performance Benchmarks (Expected)
+
+| Device | Stage 1 | Stage 2 | Total |
+|---|---|---|---|
+| Mid-range Android (Snapdragon 680) | ~80ms | ~350ms | ~430ms |
+| High-end Android (Snapdragon 8 Gen 2) | ~20ms | ~90ms | ~110ms |
+| iPhone 13 (A15 Bionic) | ~15ms | ~70ms | ~85ms |
+| iPhone 11 (A13 Bionic) | ~25ms | ~110ms | ~135ms |
+
+*Benchmarks are estimates based on INT8 quantized `.ptl` models running on CPU. Enable Neural Engine (iOS) or NNAPI (Android) for additional speedup.*
+
+---
+
+*Document prepared by Green AI ML Team · March 2026*
+*For questions contact the ML team before making any changes to preprocessing values or class indices.*

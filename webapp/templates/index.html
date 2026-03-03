@@ -1,0 +1,1126 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ResolvedPDF — Convert .resolved files to beautiful PDFs</title>
+  <meta name="description"
+    content="Convert .resolved Markdown files to beautifully styled PDFs instantly. Free, no signup, 3/day. Also available as a VS Code Extension." />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet" />
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg: #07090F;
+      --surface: #111827;
+      --surface2: #1F2937;
+      --border: #1F2937;
+      --border2: #374151;
+      --blue: #3B82F6;
+      --blue-dim: rgba(59, 130, 246, 0.15);
+      --blue-glow: rgba(59, 130, 246, 0.25);
+      --indigo: #6366F1;
+      --green: #10B981;
+      --amber: #F59E0B;
+      --red: #EF4444;
+      --text: #F9FAFB;
+      --text2: #D1D5DB;
+      --muted: #6B7280;
+      --r: 12px;
+    }
+
+    html,
+    body {
+      min-height: 100%;
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow-x: hidden;
+    }
+
+    /* ambient glow */
+    body::before {
+      content: '';
+      position: fixed;
+      top: -300px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 900px;
+      height: 700px;
+      background: radial-gradient(ellipse, rgba(99, 102, 241, 0.08) 0%, transparent 65%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar {
+      width: 6px
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--bg)
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--border2);
+      border-radius: 99px
+    }
+
+    /* ── NAV ── */
+    nav {
+      max-width: 1000px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 24px;
+      position: relative;
+      z-index: 10;
+    }
+
+    .logo {
+      font-weight: 800;
+      font-size: 1.15rem;
+      background: linear-gradient(135deg, #60A5FA, #818CF8);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -.5px;
+    }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .nav-badge {
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: 99px;
+      padding: 5px 14px;
+      font-size: .75rem;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    .nav-btn {
+      background: var(--blue);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 7px 16px;
+      font-size: .8rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: .2s;
+    }
+
+    .nav-btn:hover {
+      background: #2563EB;
+    }
+
+    /* ── HERO ── */
+    .hero {
+      text-align: center;
+      padding: 64px 24px 40px;
+      position: relative;
+      z-index: 1;
+      max-width: 780px;
+      margin: 0 auto;
+    }
+
+    .live-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      background: rgba(16, 185, 129, .08);
+      border: 1px solid rgba(16, 185, 129, .25);
+      border-radius: 99px;
+      padding: 6px 16px;
+      font-size: .78rem;
+      color: var(--green);
+      font-weight: 600;
+      margin-bottom: 24px;
+    }
+
+    .live-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+        transform: scale(1)
+      }
+
+      50% {
+        opacity: .5;
+        transform: scale(.75)
+      }
+    }
+
+    h1 {
+      font-size: clamp(2.2rem, 5.5vw, 3.6rem);
+      font-weight: 800;
+      letter-spacing: -1.5px;
+      line-height: 1.1;
+      margin-bottom: 18px;
+    }
+
+    h1 span {
+      background: linear-gradient(135deg, #60A5FA 30%, #818CF8 70%, #A78BFA);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-sub {
+      font-size: 1.05rem;
+      color: var(--text2);
+      line-height: 1.7;
+      max-width: 540px;
+      margin: 0 auto 36px;
+    }
+
+    .hero-sub code {
+      font-family: 'JetBrains Mono', monospace;
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-radius: 5px;
+      padding: 1px 7px;
+      font-size: .9em;
+      color: #A5B4FC;
+    }
+
+    /* ── USAGE STRIP ── */
+    .usage-strip {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 48px;
+      font-size: .84rem;
+    }
+
+    .dots {
+      display: flex;
+      gap: 6px;
+    }
+
+    .dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      background: var(--green);
+      transition: .4s;
+    }
+
+    .dot.used {
+      background: var(--border2);
+    }
+
+    #usageText {
+      color: var(--muted);
+    }
+
+    /* ── MAIN GRID ── */
+    .main-grid {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 0 24px 80px;
+      display: grid;
+      grid-template-columns: 1fr 420px;
+      gap: 24px;
+      align-items: start;
+      position: relative;
+      z-index: 1;
+    }
+
+    @media(max-width:820px) {
+      .main-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* ── UPLOAD CARD ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: 20px;
+      overflow: hidden;
+    }
+
+    .card-top-bar {
+      height: 3px;
+      background: linear-gradient(90deg, #3B82F6, #6366F1, #8B5CF6);
+    }
+
+    .card-body {
+      padding: 32px;
+    }
+
+    .card-label {
+      font-size: .72rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .8px;
+      margin-bottom: 10px;
+    }
+
+    /* drop zone */
+    .drop-zone {
+      border: 2px dashed var(--border2);
+      border-radius: var(--r);
+      padding: 36px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: .25s ease;
+      position: relative;
+    }
+
+    .drop-zone:hover,
+    .drop-zone.drag {
+      border-color: var(--blue);
+      background: var(--blue-dim);
+      box-shadow: 0 0 40px var(--blue-glow);
+    }
+
+    .drop-icon {
+      width: 52px;
+      height: 52px;
+      background: var(--blue-dim);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 12px;
+      font-size: 1.6rem;
+    }
+
+    .drop-primary {
+      font-weight: 600;
+      font-size: .95rem;
+      margin-bottom: 4px;
+    }
+
+    .drop-secondary {
+      color: var(--muted);
+      font-size: .82rem;
+    }
+
+    .drop-secondary b {
+      color: var(--blue);
+    }
+
+    #fileInput {
+      display: none;
+    }
+
+    /* file pill */
+    .file-pill {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-radius: 10px;
+      padding: 11px 14px;
+      margin-top: 14px;
+      font-size: .88rem;
+    }
+
+    .file-pill.show {
+      display: flex;
+    }
+
+    .fname {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-weight: 500;
+    }
+
+    .fremove {
+      cursor: pointer;
+      color: var(--muted);
+      line-height: 1;
+      font-size: 1.1rem;
+      transition: .2s;
+    }
+
+    .fremove:hover {
+      color: var(--red);
+    }
+
+    /* license */
+    .field-group {
+      margin-top: 18px;
+    }
+
+    .field-label {
+      font-size: .75rem;
+      color: var(--muted);
+      margin-bottom: 7px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .tag {
+      background: rgba(245, 158, 11, .12);
+      color: var(--amber);
+      border-radius: 4px;
+      padding: 1px 7px;
+      font-size: .68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .tag.opt {
+      background: rgba(107, 114, 128, .12);
+      color: var(--muted);
+    }
+
+    .field-input {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-radius: 10px;
+      padding: 10px 14px;
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .82rem;
+      outline: none;
+      transition: .2s;
+    }
+
+    .field-input:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px var(--blue-glow);
+    }
+
+    .field-input::placeholder {
+      color: var(--muted);
+    }
+
+    /* convert button */
+    .convert-btn {
+      width: 100%;
+      margin-top: 22px;
+      background: linear-gradient(135deg, #3B82F6, #6366F1);
+      border: none;
+      border-radius: 12px;
+      padding: 15px;
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      font-size: .98rem;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: .2px;
+      transition: .2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .convert-btn:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 30px rgba(99, 102, 241, .4);
+    }
+
+    .convert-btn:disabled {
+      opacity: .55;
+      cursor: not-allowed;
+    }
+
+    .spinner {
+      display: none;
+      width: 17px;
+      height: 17px;
+      border: 2px solid rgba(255, 255, 255, .3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .75s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg)
+      }
+    }
+
+    /* status */
+    .status {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      padding: 13px 16px;
+      border-radius: 10px;
+      margin-top: 14px;
+      font-size: .87rem;
+      font-weight: 500;
+    }
+
+    .status.ok {
+      background: rgba(16, 185, 129, .08);
+      border: 1px solid rgba(16, 185, 129, .25);
+      color: var(--green);
+      display: flex;
+    }
+
+    .status.err {
+      background: rgba(239, 68, 68, .08);
+      border: 1px solid rgba(239, 68, 68, .25);
+      color: var(--red);
+      display: flex;
+    }
+
+    .status.warn {
+      background: rgba(245, 158, 11, .08);
+      border: 1px solid rgba(245, 158, 11, .25);
+      color: var(--amber);
+      display: flex;
+    }
+
+    /* ── RIGHT COLUMN ── */
+    .right-col {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* Pricing card */
+    .pricing-card {
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: 20px;
+      overflow: hidden;
+    }
+
+    .pricing-header {
+      padding: 20px 24px 16px;
+      border-bottom: 1px solid var(--border2);
+    }
+
+    .pricing-title {
+      font-weight: 700;
+      font-size: .95rem;
+      margin-bottom: 3px;
+    }
+
+    .pricing-sub {
+      font-size: .78rem;
+      color: var(--muted);
+    }
+
+    .plan-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .plan-row:last-child {
+      border-bottom: none;
+    }
+
+    .plan-row.highlight {
+      background: rgba(59, 130, 246, .05);
+      border-left: 3px solid var(--blue);
+    }
+
+    .plan-name {
+      font-weight: 600;
+      font-size: .88rem;
+    }
+
+    .plan-price {
+      font-size: .82rem;
+      color: var(--muted);
+    }
+
+    .plan-badge {
+      font-size: .65rem;
+      font-weight: 700;
+      background: rgba(245, 158, 11, .15);
+      color: var(--amber);
+      border-radius: 4px;
+      padding: 2px 7px;
+      text-transform: uppercase;
+    }
+
+    .upgrade-btn {
+      display: block;
+      margin: 16px 24px;
+      background: linear-gradient(135deg, #F59E0B, #F97316);
+      border: none;
+      border-radius: 10px;
+      padding: 12px;
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      font-size: .88rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: center;
+      text-decoration: none;
+      transition: .2s;
+    }
+
+    .upgrade-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 24px rgba(245, 158, 11, .35);
+    }
+
+    /* VS Code card */
+    .vscode-card {
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: 20px;
+      overflow: hidden;
+    }
+
+    .vscode-top {
+      background: linear-gradient(135deg, rgba(0, 122, 204, .12), rgba(99, 102, 241, .08));
+      padding: 22px 24px;
+      border-bottom: 1px solid var(--border2);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .vs-logo {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      background: rgba(0, 122, 204, .18);
+      border: 1px solid rgba(0, 122, 204, .3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .vscode-heading {
+      font-weight: 700;
+      font-size: .92rem;
+      color: var(--text);
+      margin-bottom: 3px;
+    }
+
+    .vscode-heading span {
+      color: #60A5FA;
+    }
+
+    .vscode-tagline {
+      font-size: .75rem;
+      color: var(--muted);
+    }
+
+    /* steps */
+    .vscode-body {
+      padding: 0 24px 20px;
+    }
+
+    .steps-title {
+      font-size: .68rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .8px;
+      padding: 16px 0 10px;
+    }
+
+    .step {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .step:last-child {
+      border-bottom: none;
+    }
+
+    .step-num {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--blue-dim);
+      border: 1px solid rgba(59, 130, 246, .3);
+      color: var(--blue);
+      font-size: .72rem;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .step-content {}
+
+    .step-title {
+      font-weight: 600;
+      font-size: .83rem;
+      margin-bottom: 2px;
+    }
+
+    .step-desc {
+      font-size: .74rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .step-desc a {
+      color: var(--blue);
+      text-decoration: none;
+    }
+
+    .step-desc a:hover {
+      text-decoration: underline;
+    }
+
+    .step-desc code {
+      font-family: 'JetBrains Mono', monospace;
+      color: #A5B4FC;
+      font-size: .87em;
+      background: var(--surface2);
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+
+    .step-desc b {
+      color: var(--text2);
+    }
+
+    /* vscode buttons */
+    .vscode-actions {
+      padding: 16px 24px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      border-top: 1px solid var(--border);
+    }
+
+    .vsc-btn-primary {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: #007ACC;
+      color: #fff;
+      border: none;
+      border-radius: 9px;
+      padding: 11px;
+      font-family: 'Inter', sans-serif;
+      font-size: .84rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      transition: .2s;
+    }
+
+    .vsc-btn-primary:hover {
+      background: #005fa3;
+      box-shadow: 0 6px 20px rgba(0, 122, 204, .35);
+    }
+
+    .vsc-btn-outline {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      background: transparent;
+      color: var(--blue);
+      border: 1px solid rgba(59, 130, 246, .3);
+      border-radius: 9px;
+      padding: 10px;
+      font-family: 'Inter', sans-serif;
+      font-size: .82rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: .2s;
+    }
+
+    .vsc-btn-outline:hover {
+      background: var(--blue-dim);
+      border-color: var(--blue);
+    }
+
+    .coming-soon {
+      font-size: .72rem;
+      color: var(--muted);
+      text-align: center;
+      background: rgba(245, 158, 11, .06);
+      border: 1px solid rgba(245, 158, 11, .15);
+      border-radius: 7px;
+      padding: 7px 12px;
+      margin-top: 2px;
+    }
+
+    /* ── FEATURES STRIP ── */
+    .features-strip {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 0 24px 32px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      position: relative;
+      z-index: 1;
+    }
+
+    @media(max-width:600px) {
+      .features-strip {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .feat {
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: 14px;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .feat-icon {
+      font-size: 1.5rem;
+      margin-bottom: 8px;
+    }
+
+    .feat h3 {
+      font-size: .82rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .feat p {
+      font-size: .73rem;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 1px solid var(--border);
+      text-align: center;
+      color: var(--muted);
+      font-size: .75rem;
+      padding: 22px 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    footer a {
+      color: var(--blue);
+      text-decoration: none;
+    }
+
+    @media(max-width:500px) {
+      .card-body {
+        padding: 20px;
+      }
+
+      h1 {
+        letter-spacing: -.8px;
+      }
+
+      .nav-badge {
+        display: none;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- NAV -->
+  <nav>
+    <div class="logo">⚡ ResolvedPDF</div>
+    <div class="nav-right">
+      <div class="nav-badge">Free · 3/day</div>
+      <button class="nav-btn" onclick="document.getElementById('upgradeAnchor').scrollIntoView({behavior:'smooth'})">⭐
+        Go Premium</button>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="live-tag"><span class="live-dot"></span> Live &amp; Free to Use</div>
+    <h1>Convert <span>.resolved</span><br />Files to PDF</h1>
+    <p class="hero-sub">
+      Upload any <code>.resolved</code> file and get a beautifully formatted, print-ready PDF in seconds.
+      No signup. No install. Works in your browser.
+    </p>
+    <div class="usage-strip">
+      <div class="dots">
+        <div class="dot" id="d0"></div>
+        <div class="dot" id="d1"></div>
+        <div class="dot" id="d2"></div>
+      </div>
+      <span id="usageText">Loading usage…</span>
+    </div>
+  </div>
+
+  <!-- MAIN GRID -->
+  <div class="main-grid">
+
+    <!-- LEFT: Upload card -->
+    <div>
+      <div class="card">
+        <div class="card-top-bar"></div>
+        <div class="card-body">
+          <div class="card-label">Upload File</div>
+
+          <div class="drop-zone" id="dropZone">
+            <input type="file" id="fileInput" accept=".resolved" />
+            <div class="drop-icon">📄</div>
+            <div class="drop-primary">Drop your .resolved file here</div>
+            <div class="drop-secondary">or <b>click to browse</b> · max 10 MB</div>
+          </div>
+
+          <div class="file-pill" id="filePill">
+            <span>📝</span>
+            <span class="fname" id="fileName">—</span>
+            <span class="fremove" id="removeFile">✕</span>
+          </div>
+
+          <div class="field-group">
+            <div class="field-label">
+              License Key
+              <span class="tag">Premium</span>
+              <span class="tag opt">optional</span>
+            </div>
+            <input class="field-input" id="licenseKey" type="text"
+              placeholder="RESOLVEDPDF-XXXX-XXXX  (skip for free tier)" />
+          </div>
+
+          <button class="convert-btn" id="convertBtn">
+            <div class="spinner" id="spinner"></div>
+            <span id="btnText">⚡ Convert to PDF</span>
+          </button>
+
+          <div class="status" id="statusBox">
+            <span id="statusIcon"></span>
+            <span id="statusMsg"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div class="right-col">
+
+      <!-- Pricing card -->
+      <div class="pricing-card" id="upgradeAnchor">
+        <div class="pricing-header">
+          <div class="pricing-title">🚀 Plans</div>
+          <div class="pricing-sub">Simple, transparent pricing.</div>
+        </div>
+        <div class="plan-row">
+          <div>
+            <div class="plan-name">Free</div>
+            <div class="plan-price">3 conversions / day</div>
+          </div>
+          <div style="color:var(--green);font-size:.8rem;font-weight:700;">$0</div>
+        </div>
+        <div class="plan-row highlight">
+          <div>
+            <div class="plan-name">Premium <span class="plan-badge">⭐ Best</span></div>
+            <div class="plan-price">Unlimited conversions · Priority support</div>
+          </div>
+          <div style="color:var(--amber);font-size:.8rem;font-weight:700;">$9/mo</div>
+        </div>
+        <div class="plan-row">
+          <div>
+            <div class="plan-name">Team</div>
+            <div class="plan-price">5 seats · API access · SLA</div>
+          </div>
+          <div style="color:var(--text2);font-size:.8rem;font-weight:700;">$29/mo</div>
+        </div>
+        <a class="upgrade-btn" href="mailto:hello@resolvedpdf.com?subject=Premium Upgrade"
+          onclick="alert('Premium keys coming soon! Email us at hello@resolvedpdf.com')">
+          Upgrade to Premium →
+        </a>
+      </div>
+
+      <!-- VS Code Extension card -->
+      <div class="vscode-card">
+        <div class="vscode-top">
+          <div class="vs-logo">
+            <svg width="24" height="24" viewBox="0 0 100 100" fill="none">
+              <path
+                d="M74.9 6.57L51.8 27.2 32.58 11.2 24 16.46l22.1 18.33L24 53.12l8.58 5.26L51.8 42.38 74.9 63.02 82 56.68V12.91z"
+                fill="#007ACC" />
+              <path d="M74.9 63.02L51.8 42.38 46.1 47.4 24 65.73V81.2l8.58 5.26 19.22-16L74.9 91.02 82 84.68V69.36z"
+                fill="#007ACC" opacity=".75" />
+            </svg>
+          </div>
+          <div>
+            <div class="vscode-heading">Also on <span>VS Code</span></div>
+            <div class="vscode-tagline">Right-click any .resolved file → Convert to PDF</div>
+          </div>
+        </div>
+
+        <div class="vscode-body">
+          <div class="steps-title">How to install</div>
+
+          <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-content">
+              <div class="step-title">Install Node.js</div>
+              <div class="step-desc">Download LTS from <a href="https://nodejs.org" target="_blank">nodejs.org</a>.
+                Verify: run <code>node --version</code> in terminal.</div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-content">
+              <div class="step-title">Find &amp; Install the Extension</div>
+              <div class="step-desc">Open VS Code → press <code>Ctrl+Shift+X</code> → search <b>ResolvedPDF</b> → click
+                Install.</div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-content">
+              <div class="step-title">Right-click → Convert to PDF</div>
+              <div class="step-desc">Open any <code>.resolved</code> file in the Explorer panel → right-click →
+                <b>Convert to PDF</b>. Done.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="vscode-actions">
+          <a class="vsc-btn-primary" href="vscode:extension/resolvedpdf.resolved-pdf">
+            <svg width="14" height="14" viewBox="0 0 100 100" fill="white">
+              <path
+                d="M74.9 6.57L51.8 27.2 32.58 11.2 24 16.46l22.1 18.33L24 53.12l8.58 5.26L51.8 42.38 74.9 63.02 82 56.68V12.91z" />
+            </svg>
+            Install in VS Code
+          </a>
+          <a class="vsc-btn-outline" href="https://marketplace.visualstudio.com/items?itemName=resolvedpdf.resolved-pdf"
+            target="_blank">
+            View on Marketplace ↗
+          </a>
+          <div class="coming-soon">⏳ Publishing to Marketplace in progress — available shortly</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- FEATURES STRIP -->
+  <div class="features-strip">
+    <div class="feat">
+      <div class="feat-icon">🎨</div>
+      <h3>Beautiful Output</h3>
+      <p>Tables, code blocks, headings — all rendered with a professional layout</p>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">⚡</div>
+      <h3>Under 1 Second</h3>
+      <p>PDF is ready instantly and downloads automatically to your PC</p>
+    </div>
+    <div class="feat">
+      <div class="feat-icon">🔒</div>
+      <h3>100% Private</h3>
+      <p>Files are never stored on our servers — processed and discarded immediately</p>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer>
+    <strong>ResolvedPDF</strong> · Free: 3 conversions/day per IP ·
+    <a href="mailto:hello@resolvedpdf.com">hello@resolvedpdf.com</a>
+  </footer>
+
+  <script>
+    const dropZone = document.getElementById('dropZone'), fileInput = document.getElementById('fileInput'),
+      filePill = document.getElementById('filePill'), fileNameEl = document.getElementById('fileName'),
+      removeBtn = document.getElementById('removeFile'), convertBtn = document.getElementById('convertBtn'),
+      spinner = document.getElementById('spinner'), btnText = document.getElementById('btnText'),
+      statusBox = document.getElementById('statusBox'), statusIcon = document.getElementById('statusIcon'),
+      statusMsg = document.getElementById('statusMsg'), licenseKey = document.getElementById('licenseKey');
+    let selectedFile = null;
+
+    // Usage dots
+    fetch('/usage').then(r => r.json()).then(d => {
+      const used = d.used_today, rem = d.remaining;
+      [0, 1, 2].forEach(i => { if (i < used) document.getElementById('d' + i).classList.add('used'); });
+      const el = document.getElementById('usageText');
+      if (rem === 0) { el.textContent = 'Daily limit reached — enter a key or upgrade'; el.style.color = '#EF4444'; }
+      else { el.textContent = `${rem} free conversion${rem !== 1 ? 's' : ''} remaining today`; }
+    }).catch(() => { document.getElementById('usageText').textContent = 'Free: 3 per day'; });
+
+    // Drop zone
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag'));
+    dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('drag'); if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]); });
+    fileInput.addEventListener('change', () => { if (fileInput.files[0]) setFile(fileInput.files[0]); });
+
+    function setFile(f) {
+      if (!f.name.endsWith('.resolved')) { showStatus('err', '⚠️', 'Only .resolved files accepted.'); return; }
+      selectedFile = f; fileNameEl.textContent = f.name; filePill.classList.add('show'); hideStatus();
+    }
+    removeBtn.addEventListener('click', () => { selectedFile = null; fileInput.value = ''; filePill.classList.remove('show'); hideStatus(); });
+
+    // Submit
+    document.addEventListener('submit', e => e.preventDefault());
+    convertBtn.addEventListener('click', async () => {
+      if (!selectedFile) { showStatus('err', '⚠️', 'Select a .resolved file first.'); return; }
+      setLoading(true); hideStatus();
+      const fd = new FormData();
+      fd.append('file', selectedFile); fd.append('license_key', licenseKey.value.trim());
+      try {
+        const res = await fetch('/convert', { method: 'POST', body: fd });
+        if (res.ok) {
+          const blob = await res.blob(), url = URL.createObjectURL(blob), a = document.createElement('a');
+          const cd = res.headers.get('Content-Disposition') || '', m = cd.match(/filename="([^"]+)"/);
+          a.href = url; a.download = m ? m[1] : selectedFile.name.replace('.resolved', '.pdf');
+          document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+          showStatus('ok', '✅', 'PDF downloaded: ' + a.download);
+          setTimeout(() => location.reload(), 3000);
+        } else {
+          const err = await res.json();
+          if (res.status === 429) showStatus('warn', '🚫', err.detail + ' — enter a license key or upgrade.');
+          else showStatus('err', '❌', err.detail || 'Conversion failed.');
+        }
+      } catch (e) { showStatus('err', '❌', 'Network error. Is the server running?'); }
+      setLoading(false);
+    });
+
+    function setLoading(on) { convertBtn.disabled = on; spinner.style.display = on ? 'block' : 'none'; btnText.textContent = on ? 'Converting…' : '⚡ Convert to PDF'; }
+    function showStatus(type, icon, msg) { statusBox.className = 'status ' + type; statusIcon.textContent = icon; statusMsg.textContent = msg; }
+    function hideStatus() { statusBox.className = 'status'; }
+  </script>
+</body>
+
+</html>
