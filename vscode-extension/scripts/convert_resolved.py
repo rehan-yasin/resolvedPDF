@@ -359,6 +359,8 @@ def convert_resolved_to_pdf(input_path: str, output_path: str = None) -> str:
 
 if __name__ == "__main__":
     import sys
+    # Force UTF-8 output so emoji/unicode don't crash on Windows cp1252
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
     if len(sys.argv) < 2:
         print("Usage: python convert_resolved.py <file.resolved> [output.pdf]")
         sys.exit(1)
@@ -366,4 +368,4 @@ if __name__ == "__main__":
     inp = sys.argv[1]
     out = sys.argv[2] if len(sys.argv) > 2 else None
     result = convert_resolved_to_pdf(inp, out)
-    print(f"✅  PDF saved to: {result}")
+    print(f"[OK] PDF saved to: {result}")
