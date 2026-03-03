@@ -16,7 +16,9 @@
         "converter",
         "markdown"
     ],
-    "activationEvents": [],
+    "activationEvents": [
+        "onStartupFinished"
+    ],
     "main": "./out/extension.js",
     "contributes": {
         "commands": [
@@ -29,16 +31,23 @@
         "menus": {
             "explorer/context": [
                 {
-                    "when": "resourceExtname == .resolved",
+                    "when": "resourceFilename =~ /\\.resolved$/",
                     "command": "resolvedpdf.convert",
-                    "group": "navigation"
+                    "group": "navigation@1"
                 }
             ],
             "editor/context": [
                 {
-                    "when": "resourceExtname == .resolved",
+                    "when": "resourceFilename =~ /\\.resolved$/",
                     "command": "resolvedpdf.convert",
-                    "group": "navigation"
+                    "group": "navigation@1"
+                }
+            ],
+            "editor/title/context": [
+                {
+                    "when": "resourceFilename =~ /\\.resolved$/",
+                    "command": "resolvedpdf.convert",
+                    "group": "navigation@1"
                 }
             ]
         }
