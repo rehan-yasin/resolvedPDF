@@ -2,8 +2,9 @@
     "name": "resolved-pdf",
     "displayName": "ResolvedPDF — .resolved to PDF Converter",
     "description": "Convert .resolved Markdown files to beautifully styled PDFs with a right-click.",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "publisher": "vibecoder",
+    "icon": "icon.png",
     "engines": {
         "vscode": "^1.80.0"
     },
