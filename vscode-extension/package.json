@@ -1,0 +1,57 @@
+{
+    "name": "resolved-pdf",
+    "displayName": "ResolvedPDF — .resolved to PDF Converter",
+    "description": "Convert .resolved Markdown files to beautifully styled PDFs with a right-click.",
+    "version": "1.0.0",
+    "publisher": "resolvedpdf",
+    "engines": {
+        "vscode": "^1.80.0"
+    },
+    "categories": [
+        "Other"
+    ],
+    "keywords": [
+        "resolved",
+        "pdf",
+        "converter",
+        "markdown"
+    ],
+    "activationEvents": [],
+    "main": "./out/extension.js",
+    "contributes": {
+        "commands": [
+            {
+                "command": "resolvedpdf.convert",
+                "title": "Convert to PDF",
+                "category": "ResolvedPDF"
+            }
+        ],
+        "menus": {
+            "explorer/context": [
+                {
+                    "when": "resourceExtname == .resolved",
+                    "command": "resolvedpdf.convert",
+                    "group": "navigation"
+                }
+            ],
+            "editor/context": [
+                {
+                    "when": "resourceExtname == .resolved",
+                    "command": "resolvedpdf.convert",
+                    "group": "navigation"
+                }
+            ]
+        }
+    },
+    "scripts": {
+        "vscode:prepublish": "npm run compile",
+        "compile": "tsc -p ./",
+        "watch": "tsc -watch -p ./",
+        "package": "vsce package"
+    },
+    "devDependencies": {
+        "@types/node": "^20.0.0",
+        "@types/vscode": "^1.80.0",
+        "typescript": "^5.0.0"
+    }
+}
