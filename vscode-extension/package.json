@@ -2,7 +2,7 @@
     "name": "resolved-pdf",
     "displayName": "ResolvedPDF — .resolved to PDF Converter",
     "description": "Convert .resolved Markdown files to beautifully styled PDFs with a right-click.",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "publisher": "resolvedpdf",
     "engines": {
         "vscode": "^1.80.0"
@@ -21,6 +21,18 @@
     ],
     "main": "./out/extension.js",
     "contributes": {
+        "languages": [
+            {
+                "id": "resolved",
+                "aliases": [
+                    "Resolved",
+                    "resolved"
+                ],
+                "extensions": [
+                    ".resolved"
+                ]
+            }
+        ],
         "commands": [
             {
                 "command": "resolvedpdf.convert",
@@ -31,21 +43,21 @@
         "menus": {
             "explorer/context": [
                 {
-                    "when": "resourceFilename =~ /\\.resolved$/",
+                    "when": "resourceLangId == resolved",
                     "command": "resolvedpdf.convert",
                     "group": "navigation@1"
                 }
             ],
             "editor/context": [
                 {
-                    "when": "resourceFilename =~ /\\.resolved$/",
+                    "when": "resourceLangId == resolved",
                     "command": "resolvedpdf.convert",
                     "group": "navigation@1"
                 }
             ],
             "editor/title/context": [
                 {
-                    "when": "resourceFilename =~ /\\.resolved$/",
+                    "when": "resourceLangId == resolved",
                     "command": "resolvedpdf.convert",
                     "group": "navigation@1"
                 }
