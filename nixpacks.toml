@@ -1,0 +1,5 @@
+[phases.install]
+cmds = ["pip install -r webapp/requirements.txt"]
+
+[start]
+cmd = "cd webapp && python -m uvicorn main:app --host 0.0.0.0 --port $PORT"
