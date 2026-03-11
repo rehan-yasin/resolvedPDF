@@ -879,7 +879,7 @@
 
       <div class="tabs">
         <div class="tab active" onclick="switchTab('vscode')">Visual Studio Code</div>
-        <div class="tab" onclick="switchTab('antigravity')">Antigravity / VSCodium</div>
+        <div class="tab" onclick="switchTab('antigravity')">Antigravity</div>
       </div>
 
       <!-- VS Code Content -->
@@ -923,9 +923,9 @@
           <div class="step">
             <div class="step-n">1</div>
             <div>
-              <div class="step-h">Ensure Node.js is installed</div>
-              <div class="step-d">Must be installed globally on your machine (test with <code>node --version</code>)
-              </div>
+              <div class="step-h">Install Node.js</div>
+              <div class="step-d">Download LTS from <a href="https://nodejs.org" target="_blank">nodejs.org</a> ·
+                confirm with <code>node --version</code></div>
             </div>
           </div>
           <div class="step">
@@ -937,8 +937,15 @@
           </div>
         </div>
         <div class="vsc-btns">
-          <a class="vsc-primary" href="https://open-vsx.org/extension/vibecoder111/resolved-pdf" target="_blank"
-            style="background:#5B21B6;">
+          <a class="vsc-primary" href="vscode:extension/vibecoder111.resolved-pdf" style="background:#5B21B6;">
+            <svg width="13" height="13" viewBox="0 0 100 100" fill="white">
+              <path
+                d="M74.9 6.57L51.8 27.2 32.58 11.2 24 16.46l22.1 18.33L24 53.12l8.58 5.26L51.8 42.38 74.9 63.02 82 56.68V12.91z" />
+            </svg>
+            Install in Antigravity
+          </a>
+          <a class="vsc-outline" href="https://open-vsx.org/extension/vibecoder111/resolved-pdf" target="_blank"
+            style="border-color:rgba(91,33,182,0.3); color:#5B21B6;">
             View on Open VSX Registry →
           </a>
         </div>
