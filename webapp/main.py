@@ -7,6 +7,7 @@ FastAPI server for the ResolvedPDF web app.
 from fastapi import FastAPI, File, UploadFile, Request, Form, HTTPException
 from fastapi.responses import HTMLResponse, Response
 from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
 import os
 
 from convert_resolved import convert_to_pdf_bytes
@@ -15,7 +16,9 @@ from usage_tracker import can_convert, increment
 BASE_DIR   = os.path.dirname(__file__)
 templates  = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
+# Mount static files to serve the logo
 app = FastAPI(title="ResolvedPDF", version="1.0.0")
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 def get_client_ip(request: Request) -> str:
