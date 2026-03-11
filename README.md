@@ -57,6 +57,13 @@ python convert_resolved.py myfile.resolved C:\Users\You\Documents\output.pdf
 
 ---
 
+## ⚠️ Extension Limitations (VS Code & Antigravity)
+
+**External Files Context Menu:** If you open a `.resolved` file that is *outside* your currently open folder/workspace, the code editor occasionally restricts the script trigger from appearing. 
+- **Workaround:** Simply click to another open tab and click back to the `.resolved` file (or close and re-open the file). This refreshes the context menu and the "Convert to PDF" button will appear.
+
+---
+
 ## 📁 Files
 
 | File | Purpose |
