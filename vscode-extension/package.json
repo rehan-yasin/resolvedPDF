@@ -32,14 +32,14 @@
         "menus": {
             "explorer/context": [
                 {
-                    "when": "resourceFilename =~ /\\.(resolved|md)$/",
+                    "when": "resourceExtname == .resolved",
                     "command": "resolvedpdf.convert",
                     "group": "navigation"
                 }
             ],
             "editor/context": [
                 {
-                    "when": "resourceFilename =~ /\\.(resolved|md)$/",
+                    "when": "resourceExtname == .resolved",
                     "command": "resolvedpdf.convert",
                     "group": "navigation"
                 }

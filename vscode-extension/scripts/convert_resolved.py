@@ -320,7 +320,7 @@ def convert_resolved_to_pdf(input_path: str, output_path: str = None) -> str:
         topMargin=2.5 * cm,
         bottomMargin=2.5 * cm,
         title=os.path.basename(input_path),
-        author="Resolved PDF Converter",
+        author="Resolved2PDF",
     )
 
     def header_footer(canvas, doc):
@@ -345,10 +345,31 @@ def convert_resolved_to_pdf(input_path: str, output_path: str = None) -> str:
         canvas.rect(0, 0, w, 1.1 * cm, fill=1, stroke=0)
         canvas.setStrokeColor(ACCENT_BLUE)
         canvas.line(0, 1.1 * cm, w, 1.1 * cm)
+        
+        # Left: Page Number
         canvas.setFont("Helvetica", 8)
         canvas.setFillColor(colors.HexColor("#94A3B8"))
-        canvas.drawCentredString(w / 2, 0.42 * cm,
-                                 f"Page {doc.page}  |  Converted by Resolved PDF Plugin")
+        canvas.drawString(2 * cm, 0.42 * cm, f"Page {doc.page}")
+
+        # Right: Branding and Link
+        brand_text = "Converted by Resolved2PDF  |  "
+        link_text = "resolved2pdf.com"
+        
+        canvas.setFont("Helvetica", 8)
+        canvas.setFillColor(colors.HexColor("#94A3B8"))
+        link_w = canvas.stringWidth(link_text, "Helvetica", 8)
+        canvas.drawRightString(w - 2 * cm - link_w, 0.42 * cm, brand_text)
+        
+        canvas.setFillColor(colors.HexColor("#93C5FD")) # light blue link color
+        canvas.drawRightString(w - 2 * cm, 0.42 * cm, link_text)
+        
+        # Make the link clickable
+        x1 = w - 2 * cm - link_w
+        y1 = 0.42 * cm - 4
+        x2 = w - 2 * cm
+        y2 = 0.42 * cm + 8
+        canvas.linkURL("https://resolved2pdf.com", (x1, y1, x2, y2), relative=1)
+        
         canvas.restoreState()
 
     content = md_to_flowables(md_text, styles)
@@ -359,8 +380,6 @@ def convert_resolved_to_pdf(input_path: str, output_path: str = None) -> str:
 
 if __name__ == "__main__":
     import sys
-    # Force UTF-8 output so emoji/unicode don't crash on Windows cp1252
-    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
     if len(sys.argv) < 2:
         print("Usage: python convert_resolved.py <file.resolved> [output.pdf]")
         sys.exit(1)
@@ -368,4 +387,4 @@ if __name__ == "__main__":
     inp = sys.argv[1]
     out = sys.argv[2] if len(sys.argv) > 2 else None
     result = convert_resolved_to_pdf(inp, out)
-    print(f"[OK] PDF saved to: {result}")
+    print(f"✅  PDF saved to: {result}")
