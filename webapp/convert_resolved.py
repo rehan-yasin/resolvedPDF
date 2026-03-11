@@ -14,12 +14,18 @@ from reportlab.lib.units import cm
 from reportlab.lib import colors
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
-    Preformatted, HRFlowable, KeepTogether
+    Preformatted, HRFlowable, KeepTogether, Image
 )
 from reportlab.lib.enums import TA_LEFT, TA_CENTER
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-
+from reportlab.lib.utils import ImageReader
+import base64
+import urllib.request
+import urllib.parse
+import tempfile
+import json
+import io
 
 # ─── Color Palette (Professional Light Theme — optimised for white PDF pages) ──
 PAGE_BG      = colors.white
@@ -36,6 +42,31 @@ TEXT_COLOR   = colors.HexColor("#0F172A")   # near-black — body text
 MUTED        = colors.HexColor("#64748B")   # medium slate — muted labels
 BORDER       = colors.HexColor("#CBD5E1")   # light slate — table/hr borders
 WHITE        = colors.white
+
+
+def fetch_mermaid_image(mermaid_text):
+    """Fetch mermaid chart as a JPEG from mermaid.ink API."""
+    try:
+        # Mermaid Live Editor JSON state format
+        state = {
+            "code": mermaid_text,
+            "mermaid": {"theme": "default"}
+        }
+        json_str = json.dumps(state)
+        # Use simple base64, URL safe encoding is expected by the API
+        b64 = base64.urlsafe_b64encode(json_str.encode('utf-8')).decode('utf-8')
+        
+        url = f"https://mermaid.ink/img/{b64}"
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=10) as response:
+            if response.status == 200:
+                tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.jpeg')
+                tmp.write(response.read())
+                tmp.close()
+                return tmp.name
+    except Exception as e:
+        print(f"Mermaid rendering failed: {e}")
+    return None
 
 
 def build_styles():
@@ -202,8 +233,9 @@ def md_to_flowables(md_text, styles):
             i += 1
             continue
 
-        # ── Code block ────────────────────────────────────────────────────────
+        # ── Code block & Mermaid Flowcharts ────────────────────────────────────────────────────────
         if stripped.startswith('```'):
+            lang = stripped[3:].strip().lower()
             code_lines = []
             i += 1
             while i < len(lines) and not lines[i].strip().startswith('```'):
@@ -211,6 +243,29 @@ def md_to_flowables(md_text, styles):
                 i += 1
             i += 1  # skip closing ```
             code_text = '\n'.join(code_lines)
+            
+            # --- Mermaid Injection ---
+            if lang == 'mermaid':
+                img_path = fetch_mermaid_image(code_text)
+                if img_path:
+                    try:
+                        flowables.append(Spacer(1, 4))
+                        img = ImageReader(img_path)
+                        img_w, img_h = img.getSize()
+                        # Constrain width to the pdf page bounds
+                        max_w = A4[0] - 4 * cm
+                        if img_w > max_w:
+                            ratio = max_w / img_w
+                            img_w = max_w
+                            img_h = img_h * ratio
+                        
+                        flowables.append(Image(img_path, width=img_w, height=img_h))
+                        flowables.append(Spacer(1, 6))
+                        continue
+                    except Exception as e:
+                        print(f"Error drawing Mermaid image: {e}")
+            
+            # Fallback for normal code
             flowables.append(Spacer(1, 4))
             flowables.append(Preformatted(
                 code_text,
@@ -308,7 +363,8 @@ def convert_resolved_to_pdf(input_path: str, output_path: str = None) -> str:
         output_path = base + ".pdf"
 
     with open(input_path, 'r', encoding='utf-8') as f:
-        md_text = f.read()
+        # Remove DOS carriage returns \r which render as black squares in PDF code blocks
+        md_text = f.read().replace('\r', '')
 
     styles = build_styles()
 
@@ -376,6 +432,73 @@ def convert_resolved_to_pdf(input_path: str, output_path: str = None) -> str:
     doc.build(content, onFirstPage=header_footer, onLaterPages=header_footer)
 
     return os.path.abspath(output_path)
+
+
+def convert_to_pdf_bytes(md_text: str, filename: str = "document") -> bytes:
+    """Convert markdown text to PDF and return as bytes (for HTTP response)."""
+    # Remove DOS carriage returns
+    md_text = md_text.replace('\r', '')
+    
+    buffer = io.BytesIO()
+    styles = build_styles()
+
+    doc = SimpleDocTemplate(
+        buffer, pagesize=A4,
+        leftMargin=2*cm, rightMargin=2*cm, topMargin=2.5*cm, bottomMargin=2.5*cm,
+        title=filename, author="Resolved2PDF"
+    )
+
+    def header_footer(canvas, doc_obj):
+        canvas.saveState()
+        w, h = A4
+        # Header bar
+        canvas.setFillColor(HEADER_BAR)
+        canvas.rect(0, h - 1.4*cm, w, 1.4*cm, fill=1, stroke=0)
+        canvas.setFont("Helvetica-Bold", 9)
+        canvas.setFillColor(colors.HexColor("#93C5FD"))
+        canvas.drawString(2*cm, h - 0.95*cm, filename)
+        canvas.setFont("Helvetica", 8)
+        canvas.setFillColor(colors.HexColor("#94A3B8"))
+        canvas.drawRightString(w - 2 * cm, h - 0.95 * cm,
+                               f"Generated {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+        canvas.setStrokeColor(ACCENT_BLUE)
+        canvas.setLineWidth(0.8)
+        canvas.line(0, h - 1.4*cm, w, h - 1.4*cm)
+        
+        # Footer bar
+        canvas.setFillColor(HEADER_BAR)
+        canvas.rect(0, 0, w, 1.1*cm, fill=1, stroke=0)
+        canvas.setStrokeColor(ACCENT_BLUE)
+        canvas.line(0, 1.1*cm, w, 1.1*cm)
+        
+        # Left: Page Number
+        canvas.setFont("Helvetica", 8)
+        canvas.setFillColor(colors.HexColor("#94A3B8"))
+        canvas.drawString(2 * cm, 0.42 * cm, f"Page {doc.page}")
+
+        # Right: Branding and Link
+        brand_text = "Converted by Resolved2PDF  |  "
+        link_text = "resolved2pdf.com"
+        
+        canvas.setFont("Helvetica", 8)
+        canvas.setFillColor(colors.HexColor("#94A3B8"))
+        link_w = canvas.stringWidth(link_text, "Helvetica", 8)
+        canvas.drawRightString(w - 2 * cm - link_w, 0.42 * cm, brand_text)
+        
+        canvas.setFillColor(colors.HexColor("#93C5FD"))
+        canvas.drawRightString(w - 2 * cm, 0.42 * cm, link_text)
+        
+        # Make link clickable
+        x1 = w - 2 * cm - link_w
+        y1 = 0.42 * cm - 4
+        x2 = w - 2 * cm
+        y2 = 0.42 * cm + 8
+        canvas.linkURL("https://resolved2pdf.com", (x1, y1, x2, y2), relative=1)
+        
+        canvas.restoreState()
+
+    doc.build(md_to_flowables(md_text, styles), onFirstPage=header_footer, onLaterPages=header_footer)
+    return buffer.getvalue()
 
 
 if __name__ == "__main__":
