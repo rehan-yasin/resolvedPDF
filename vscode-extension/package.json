@@ -2,7 +2,7 @@
     "name": "resolved-pdf",
     "displayName": "ResolvedPDF — .resolved to PDF Converter",
     "description": "Convert .resolved Markdown files to beautifully styled PDFs with a right-click.",
-    "version": "1.0.2",
+    "version": "1.0.5",
     "publisher": "vibecoder",
     "icon": "icon.png",
     "engines": {
@@ -32,14 +32,14 @@
         "menus": {
             "explorer/context": [
                 {
-                    "when": "resourceExtname == .resolved",
+                    "when": "resourceFilename =~ /\\.(resolved|md)$/",
                     "command": "resolvedpdf.convert",
                     "group": "navigation"
                 }
             ],
             "editor/context": [
                 {
-                    "when": "resourceExtname == .resolved",
+                    "when": "resourceFilename =~ /\\.(resolved|md)$/",
                     "command": "resolvedpdf.convert",
                     "group": "navigation"
                 }
