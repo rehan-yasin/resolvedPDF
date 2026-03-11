@@ -668,6 +668,45 @@
       padding: 7px 12px;
     }
 
+    /* Tabs */
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      background: var(--surf2);
+    }
+
+    .tab {
+      flex: 1;
+      text-align: center;
+      padding: 12px 0;
+      font-size: .85rem;
+      font-weight: 600;
+      color: var(--muted);
+      cursor: pointer;
+      transition: .2s;
+      border-bottom: 2px solid transparent;
+    }
+
+    .tab:hover {
+      color: var(--text);
+      background: rgba(255, 255, 255, .03);
+    }
+
+    .tab.active {
+      color: var(--blue);
+      border-bottom-color: var(--blue);
+      background: var(--surface);
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+
     /* premium footer */
     .premium-bar {
       width: 100%;
@@ -826,57 +865,83 @@
       </div>
     </div>
 
-    <!-- VS Code card -->
+    <!-- Editor Extensions card -->
     <div class="vsc-card">
       <div class="vsc-head">
         <div class="vsc-logo">
           <img src="/static/icon.png" width="36" height="36" style="border-radius: 8px;" alt="Resolved2PDF Logo" />
         </div>
         <div>
-          <div class="vsc-title">Also on <span>VS Code</span></div>
+          <div class="vsc-title">Also in your <span>Code Editor</span></div>
           <div class="vsc-tag">Right-click any <code>.resolved</code> file → Convert to PDF inside your editor</div>
         </div>
       </div>
 
-      <div class="steps">
-        <div class="steps-lbl">How to install</div>
-        <div class="step">
-          <div class="step-n">1</div>
-          <div>
-            <div class="step-h">Install Node.js</div>
-            <div class="step-d">Download LTS from <a href="https://nodejs.org" target="_blank">nodejs.org</a> · confirm
-              with <code>node --version</code></div>
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab('vscode')">Visual Studio Code</div>
+        <div class="tab" onclick="switchTab('antigravity')">Antigravity / VSCodium</div>
+      </div>
+
+      <!-- VS Code Content -->
+      <div id="tab-vscode" class="tab-content active">
+        <div class="steps">
+          <div class="steps-lbl">How to install in VS Code</div>
+          <div class="step">
+            <div class="step-n">1</div>
+            <div>
+              <div class="step-h">Install Node.js</div>
+              <div class="step-d">Download LTS from <a href="https://nodejs.org" target="_blank">nodejs.org</a> ·
+                confirm with <code>node --version</code></div>
+            </div>
           </div>
-        </div>
-        <div class="step">
-          <div class="step-n">2</div>
-          <div>
-            <div class="step-h">Find the Extension</div>
-            <div class="step-d">Open VS Code → press <code>Ctrl+Shift+X</code> → search <b>ResolvedPDF</b> → Install
+          <div class="step">
+            <div class="step-n">2</div>
+            <div>
+              <div class="step-h">Find the Extension</div>
+              <div class="step-d">Open VS Code → press <code>Ctrl+Shift+X</code> → search <b>ResolvedPDF</b> → Install
+              </div>
             </div>
           </div>
         </div>
-        <div class="step">
-          <div class="step-n">3</div>
-          <div>
-            <div class="step-h">Right-click → Convert</div>
-            <div class="step-d">Open any <code>.resolved</code> file → right-click → <b>"Convert to PDF"</b> → PDF saved
-              to same folder</div>
-          </div>
+        <div class="vsc-btns">
+          <a class="vsc-primary" href="vscode:extension/vibecoder.resolved-pdf">
+            <svg width="13" height="13" viewBox="0 0 100 100" fill="white">
+              <path
+                d="M74.9 6.57L51.8 27.2 32.58 11.2 24 16.46l22.1 18.33L24 53.12l8.58 5.26L51.8 42.38 74.9 63.02 82 56.68V12.91z" />
+            </svg>
+            Install in VS Code
+          </a>
+          <a class="vsc-outline" href="https://marketplace.visualstudio.com/items?itemName=vibecoder.resolved-pdf"
+            target="_blank">View on Microsoft Marketplace →</a>
         </div>
       </div>
 
-      <div class="vsc-btns">
-        <a class="vsc-primary" href="vscode:extension/resolvedpdf.resolved-pdf">
-          <svg width="13" height="13" viewBox="0 0 100 100" fill="white">
-            <path
-              d="M74.9 6.57L51.8 27.2 32.58 11.2 24 16.46l22.1 18.33L24 53.12l8.58 5.26L51.8 42.38 74.9 63.02 82 56.68V12.91z" />
-          </svg>
-          Install in VS Code
-        </a>
-        <a class="vsc-outline" href="https://marketplace.visualstudio.com/items?itemName=resolvedpdf.resolved-pdf"
-          target="_blank">View on Marketplace →</a>
-        <div class="vsc-note">⏳ Publishing in progress — available on the Marketplace shortly</div>
+      <!-- Antigravity Content -->
+      <div id="tab-antigravity" class="tab-content">
+        <div class="steps">
+          <div class="steps-lbl">How to install in Antigravity</div>
+          <div class="step">
+            <div class="step-n">1</div>
+            <div>
+              <div class="step-h">Ensure Node.js is installed</div>
+              <div class="step-d">Must be installed globally on your machine (test with <code>node --version</code>)
+              </div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-n">2</div>
+            <div>
+              <div class="step-h">Install from Open VSX</div>
+              <div class="step-d">Open Antigravity Extensions panel → search <b>ResolvedPDF</b> → Click Install</div>
+            </div>
+          </div>
+        </div>
+        <div class="vsc-btns">
+          <a class="vsc-primary" href="https://open-vsx.org/extension/vibecoder111/resolved-pdf" target="_blank"
+            style="background:#5B21B6;">
+            View on Open VSX Registry →
+          </a>
+        </div>
       </div>
     </div>
 
@@ -947,6 +1012,13 @@
     function load(on) { btn.disabled = on; sp.style.display = on ? 'block' : 'none'; btnT.textContent = on ? 'Converting…' : '⚡ Convert to PDF'; }
     function show(t, i, m) { sbox.className = 'status ' + t; sicon.textContent = i; smsg.textContent = m; }
     function hide() { sbox.className = 'status'; }
+
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      event.target.classList.add('active');
+      document.getElementById('tab-' + tabId).classList.add('active');
+    }
   </script>
 </body>
 
