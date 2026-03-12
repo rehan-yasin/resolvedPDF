@@ -80,7 +80,7 @@ export function activate(context: vscode.ExtensionContext) {
                         // Normal success payload
                         vscode.window
                             .showInformationMessage(
-                                `✅ PDF saved: ${path.basename(outputPath)}`,
+                                `PDF saved: ${path.basename(outputPath)}`,
                                 'Open PDF',
                                 'Show in Explorer'
                             )

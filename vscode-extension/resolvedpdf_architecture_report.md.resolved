@@ -1,0 +1,182 @@
+# ResolvedPDF: Comprehensive Ecosystem Report
+
+This document provides a detailed technical overview of the **ResolvedPDF** project, its architecture, deployment environments, and a guide for future modifications.
+
+## 1. Project Overview
+
+ResolvedPDF is a multi-platform tool designed to convert custom [.resolved](file:///c:/Users/rehan/OneDrive/Desktop/Plugin/model_handoff.md.resolved) Markdown-style files into beautifully formatted PDF documents. The ecosystem consists of three primary interfaces:
+
+1. **Local Desktop Application:** A Tkinter-based GUI for local conversion and premium key management.
+2. **Web Application:** A FastAPI backend with a modern drag-and-drop frontend, deployed to Railway.
+3. **Editor Extensions:** Integrations for Visual Studio Code (Microsoft Marketplace) and Antigravity/VSCodium (Open VSX Registry).
+
+---
+
+## 2. System Architecture & Flow
+
+The ecosystem relies on a shared core conversion logic, adapted for each platform.
+
+### High-Level Architecture
+
+```mermaid
+graph TD
+    subgraph "User Interfaces"
+        VSCode["VS Code / Antigravity Extension\n(TypeScript)"]
+        WebAppUI["Web App Frontend\n(HTML/JS, Drag & Drop)"]
+        DesktopApp["Desktop GUI\n(Python/Tkinter)"]
+    end
+
+    subgraph "Core Logic (Python)"
+        Converter["convert_resolved.py\n(ReportLab engine)"]
+        Usage["usage_tracker.py\n(Rate limiting & Premium logic)"]
+    end
+
+    subgraph "Web Backend (FastAPI)"
+        MainPY["main.py"]
+        Server["Uvicorn / Railway"]
+    end
+
+    VSCode -->|Spawns external process| Converter
+    DesktopApp --> Converter
+    DesktopApp --> Usage
+    
+    WebAppUI -->|POST /convert| MainPY
+    MainPY --> Converter
+    MainPY --> Usage
+    MainPY -->|Returns Blob| WebAppUI
+```
+
+---
+
+## 3. Component Details & Internal Working
+
+### 3.1 Core Converter ([convert_resolved.py](file:///c:/Users/rehan/OneDrive/Desktop/Plugin/convert_resolved.py))
+This is the heart of the application. It parses the custom markdown format and renders it into a PDF.
+
+*   **Engine:** Uses `reportlab.platypus` (PageTemplates, Paragraphs, Tables) to construct the document flow.
+*   **Parsing Logic:** It reads the text line by line, identifying:
+    *   `# Heading 1`, `## Heading 2`, `### Heading 3`
+    *   ```code blocks```
+    *   `| Table | Rows |`
+    *   `**Bold**` and `*Italic*` text.
+*   **Styling:** Contains a predefined [build_styles()](file:///c:/Users/rehan/OneDrive/Desktop/Plugin/convert_resolved.py#41-90) function that sets fonts (Helvetica), colors (professional light theme), and spacing.
+*   **Process:**
+    1.  Reads the input string.
+    2.  Tokenizes/parses the markdown into ReportLab *Flowables* (Paragraph, Table, Preformatted).
+    3.  Builds the PDF document using `SimpleDocTemplate`.
+
+### 3.2 Web Application (`webapp/`)
+A fully containerized web service designed for public access.
+
+*   **Backend ([main.py](file:///c:/Users/rehan/OneDrive/Desktop/Plugin/webapp/main.py)):** Uses FastAPI. Exposes the HTML frontend and an API endpoint (`/convert`).
+*   **Rate Limiting ([usage_tracker.py](file:///c:/Users/rehan/OneDrive/Desktop/Plugin/usage_tracker.py)):** Implements IP-based rate limiting (default 3/day) tracked via a local JSON file (`.usage_data.json`). Premium keys bypass this limit.
+*   **Frontend ([templates/index.html](file:///c:/Users/rehan/OneDrive/Desktop/Plugin/webapp/templates/index.html)):** A modern, responsive single-page application using vanilla JS. Handles drag-and-drop, API communication, and automatic file downloading upon success.
+*   **Deployment (Railway):**
+    *   Uses Nixpacks for automated building.
+    *   [Procfile](file:///c:/Users/rehan/OneDrive/Desktop/Plugin/Procfile) and [nixpacks.toml](file:///c:/Users/rehan/OneDrive/Desktop/Plugin/nixpacks.toml) ensure correct dependency installation from [requirements.txt](file:///c:/Users/rehan/OneDrive/Desktop/Plugin/requirements.txt) and correct start commands (`cd webapp && python -m uvicorn...`).
+
+### 3.3 Editor Extensions (`vscode-extension/`)
+Provides seamless integration directly within code editors.
+
+*   **Language:** TypeScript/Node.js.
+*   **Functionality:** Registers a command (`resolvedpdf.convert`) that appears in the editor and file explorer context menus for files ending in [.resolved](file:///c:/Users/rehan/OneDrive/Desktop/Plugin/model_handoff.md.resolved).
+*   **Execution:** When triggered, the extension uses `child_process.spawn` to execute a bundled version of [convert_resolved.py](file:///c:/Users/rehan/OneDrive/Desktop/Plugin/convert_resolved.py) against the selected file.
+*   **Publishing Platforms:**
+    *   **Microsoft Marketplace:** Target: Standard VS Code. Publisher: `vibecoder`. Tool: `vsce publish`.
+    *   **Open VSX Registry:** Target: Antigravity, VSCodium, Gitpod. Publisher: `vibecoder111`. Tool: `ovsx publish`.
+
+### Extension Execution Flow
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Editor as VS Code / Antigravity
+    participant Extension as extension.ts
+    participant Python as convert_resolved.py
+    participant FileSystem
+
+    User->>Editor: Right-clicks file.resolved
+    User->>Editor: Selects "Convert to PDF"
+    Editor->>Extension: Triggers resolvedpdf.convert(URI)
+    Extension->>Extension: Validates file extension & existence
+    Extension->>Python: child_process.spawn('python', [scriptPath, input, output])
+    Extension->>User: Shows "Converting..." progress
+    Python->>FileSystem: Reads file.resolved
+    Python->>FileSystem: Writes file.pdf
+    Python-->>Extension: Process Exits (Code 0)
+    Extension->>User: Shows Success Notification
+    User->>Extension: Clicks "Open PDF"
+    Extension->>Editor: Opens PDF in default viewer
+```
+
+---
+
+## 4. File Structure Guide
+
+Here is where every component lives and what it does. Use this to locate code for future changes.
+
+```text
+C:\Users\rehan\OneDrive\Desktop\Plugin\
+├── convert_resolved.py       # Core PDF generation logic (Shared)
+├── plugin_gui.py             # Desktop App UI (Tkinter)
+├── usage_tracker.py          # Local Desktop Premium/Usage logic
+├── requirements.txt          # Python dependencies (FastAPI, Reportlab)
+├── README.md                 # Project documentation
+├── .gitignore                # Git exclusion rules
+│
+├── webapp/                   # --- WEB APPLICATION BACKEND ---
+│   ├── main.py               # FastAPI server routes & API endpoints
+│   ├── usage_tracker.py      # IP-based rate limiting logic for Web
+│   ├── convert_resolved.py   # Web-adapted version of the converter
+│   ├── nixpacks.toml         # Railway build configuration
+│   ├── Procfile              # Railway start command
+│   ├── requirements.txt      # Web dependencies
+│   └── templates/
+│       └── index.html        # Web Frontend UI (HTML/CSS/JS)
+│
+└── vscode-extension/         # --- EDITOR EXTENSIONS ---
+    ├── package.json          # Extension manifest (Commands, Menus)
+    ├── tsconfig.json         # TypeScript compiler configuration
+    ├── icon.png              # The official 3D logo
+    ├── .vscodeignore         # Files excluded from the .vsix package
+    ├── src/
+    │   └── extension.ts      # Main TypeScript logic for the extension
+    └── scripts/
+        └── convert_resolved.py # Bundled Python script for local execution
+```
+
+---
+
+## 5. Developer Guide: How to Make Changes
+
+When you need to update the application, refer to this section to know which files to modify.
+
+### Scenario A: Changing the PDF Styling (Colors, Fonts, Layout)
+If you want to change how the generated PDF looks (e.g., darker headers, smaller text, different fonts):
+1.  **Where:** Edit [convert_resolved.py](file:///c:/Users/rehan/OneDrive/Desktop/Plugin/convert_resolved.py) (You will need to update it in all locations: root, `webapp/`, and `vscode-extension/scripts/`).
+2.  **What to change:** Modify the `build_styles()` function. This function defines the hex colors, font sizes, and padding for Paragraphs (`Normal`, `Heading1`, etc.) and Tables.
+
+### Scenario B: Adding a New Markdown Feature (e.g., Checkboxes)
+If you want the converter to understand a new syntax in the `.resolved` files:
+1.  **Where:** Edit `convert_resolved.py` in all locations.
+2.  **What to change:** Find the `convert_resolved_to_pdf()` function. Inside the `for line in content.split('\n'):` loop, add new `if/elif` conditions to parse your specific syntax using Regex or string matching and append the corresponding ReportLab *Flowable*.
+
+### Scenario C: Modifying the Web App UI
+If you want to change colors, buttons, or layout on the website:
+1.  **Where:** Edit `webapp/templates/index.html`.
+2.  **What to change:** This is a single-file application. The CSS is within the `<style>` tag, HTML structure in the `<body>`, and interactivity in the `<script>` tag at the bottom.
+
+### Scenario D: Changing Web App Rate Limits or Premium Logic
+If you want to give more free conversions or implement a real payment gateway check:
+1.  **Where:** Edit `webapp/usage_tracker.py`.
+2.  **What to change:** Modify `FREE_LIMIT_PER_DAY` to change the quota. Modify `validate_premium_key()` to call a Stripe API instead of the hardcoded dummy key.
+
+### Scenario E: Updating the VS Code Extension Logic
+If you want to change how the extension behaves (e.g., adding a shortcut key, changing notification text):
+1.  **Where:** Edit `vscode-extension/src/extension.ts`.
+2.  **What to change:** Modify the callback inside `vscode.commands.registerCommand(...)`.
+3.  **Deployment:** You must compile the TypeScript (`npm run compile`), repackage (`npx vsce package`), and push updates to both Microsoft (`npx vsce publish`) and Open VSX (`npx ovsx publish`) marketplaces.
+
+---
+
+*This report was automatically generated for Rehan Yasin.*

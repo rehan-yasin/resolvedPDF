@@ -79,8 +79,21 @@ function activate(context) {
             proc.on('close', (code) => {
                 resolve();
                 if (code === 0 && fs.existsSync(outputPath)) {
+                    // Track total successfully converted files locally
+                    const currentCount = context.globalState.get('conversionCount', 0);
+                    const newCount = currentCount + 1;
+                    context.globalState.update('conversionCount', newCount);
+                    // Trigger the Review App popup on exactly the 10th conversion
+                    if (newCount === 10) {
+                        vscode.window.showInformationMessage("🎉 You've converted 10 PDFs with ResolvedPDF! If you're enjoying it, a quick 5-star review would mean the world to me.", "Leave a Review", "Remind me later").then(selection => {
+                            if (selection === "Leave a Review") {
+                                vscode.env.openExternal(vscode.Uri.parse("https://marketplace.visualstudio.com/items?itemName=vibecoder.resolved-pdf&ssr=false#review-details"));
+                            }
+                        });
+                    }
+                    // Normal success payload
                     vscode.window
-                        .showInformationMessage(`✅ PDF saved: ${path.basename(outputPath)}`, 'Open PDF', 'Show in Explorer')
+                        .showInformationMessage(`PDF saved: ${path.basename(outputPath)}`, 'Open PDF', 'Show in Explorer')
                         .then((choice) => {
                         if (choice === 'Open PDF') {
                             vscode.env.openExternal(vscode.Uri.file(outputPath));

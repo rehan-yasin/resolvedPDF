@@ -14,12 +14,17 @@ from reportlab.lib.units import cm
 from reportlab.lib import colors
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
-    Preformatted, HRFlowable, KeepTogether
+    Preformatted, HRFlowable, KeepTogether, Image
 )
 from reportlab.lib.enums import TA_LEFT, TA_CENTER
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-
+from reportlab.lib.utils import ImageReader
+import base64
+import urllib.request
+import urllib.parse
+import tempfile
+import json
 
 # ─── Color Palette (Professional Light Theme — optimised for white PDF pages) ──
 PAGE_BG      = colors.white
@@ -36,6 +41,31 @@ TEXT_COLOR   = colors.HexColor("#0F172A")   # near-black — body text
 MUTED        = colors.HexColor("#64748B")   # medium slate — muted labels
 BORDER       = colors.HexColor("#CBD5E1")   # light slate — table/hr borders
 WHITE        = colors.white
+
+
+def fetch_mermaid_image(mermaid_text):
+    """Fetch mermaid chart as a JPEG from mermaid.ink API."""
+    try:
+        # Mermaid Live Editor JSON state format
+        state = {
+            "code": mermaid_text,
+            "mermaid": {"theme": "default"}
+        }
+        json_str = json.dumps(state)
+        # Use simple base64, URL safe encoding is expected by the API
+        b64 = base64.urlsafe_b64encode(json_str.encode('utf-8')).decode('utf-8')
+        
+        url = f"https://mermaid.ink/img/{b64}"
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=10) as response:
+            if response.status == 200:
+                tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.jpeg')
+                tmp.write(response.read())
+                tmp.close()
+                return tmp.name
+    except Exception as e:
+        print(f"Mermaid rendering failed: {e}")
+    return None
 
 
 def build_styles():
@@ -202,8 +232,9 @@ def md_to_flowables(md_text, styles):
             i += 1
             continue
 
-        # ── Code block ────────────────────────────────────────────────────────
+        # ── Code block & Mermaid Flowcharts ────────────────────────────────────────────────────────
         if stripped.startswith('```'):
+            lang = stripped[3:].strip().lower()
             code_lines = []
             i += 1
             while i < len(lines) and not lines[i].strip().startswith('```'):
@@ -211,6 +242,29 @@ def md_to_flowables(md_text, styles):
                 i += 1
             i += 1  # skip closing ```
             code_text = '\n'.join(code_lines)
+            
+            # --- Mermaid Injection ---
+            if lang == 'mermaid':
+                img_path = fetch_mermaid_image(code_text)
+                if img_path:
+                    try:
+                        flowables.append(Spacer(1, 4))
+                        img = ImageReader(img_path)
+                        img_w, img_h = img.getSize()
+                        # Constrain width to the pdf page bounds
+                        max_w = A4[0] - 4 * cm
+                        if img_w > max_w:
+                            ratio = max_w / img_w
+                            img_w = max_w
+                            img_h = img_h * ratio
+                        
+                        flowables.append(Image(img_path, width=img_w, height=img_h))
+                        flowables.append(Spacer(1, 6))
+                        continue
+                    except Exception as e:
+                        print(f"Error drawing Mermaid image: {e}")
+            
+            # Fallback for normal code
             flowables.append(Spacer(1, 4))
             flowables.append(Preformatted(
                 code_text,
@@ -308,7 +362,8 @@ def convert_resolved_to_pdf(input_path: str, output_path: str = None) -> str:
         output_path = base + ".pdf"
 
     with open(input_path, 'r', encoding='utf-8') as f:
-        md_text = f.read()
+        # Remove DOS carriage returns \r which render as black squares in PDF code blocks
+        md_text = f.read().replace('\r', '')
 
     styles = build_styles()
 
@@ -387,4 +442,4 @@ if __name__ == "__main__":
     inp = sys.argv[1]
     out = sys.argv[2] if len(sys.argv) > 2 else None
     result = convert_resolved_to_pdf(inp, out)
-    print(f"✅  PDF saved to: {result}")
+    print(f"PDF saved to: {result}")

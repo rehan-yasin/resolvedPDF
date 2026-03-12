@@ -510,4 +510,4 @@ if __name__ == "__main__":
     inp = sys.argv[1]
     out = sys.argv[2] if len(sys.argv) > 2 else None
     result = convert_resolved_to_pdf(inp, out)
-    print(f"✅  PDF saved to: {result}")
+    print(f"PDF saved to: {result}")
