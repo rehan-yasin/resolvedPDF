@@ -59,4 +59,4 @@ def can_convert(ip: str, license_key: str = "") -> tuple:
     remaining = max(0, FREE_DAILY_LIMIT - used)
     if remaining > 0:
         return True, f"{remaining} conversions left today", remaining
-    return False, "Daily free limit reached. Upgrade to Premium.", 0
+    return False, "Hey! You've hit your daily web limit. Luckily, our VS Code / Antigravity plugin is 100% Free and Unlimited forever!", 0
