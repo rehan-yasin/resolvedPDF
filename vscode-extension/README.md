@@ -22,6 +22,14 @@ You must have [Node.js](https://nodejs.org/) installed on your machine for the e
 3. Select **"Convert to PDF"**.
 4. The generated PDF will instantly appear in the same directory!
 
+## 🤖 AI Agent Automation (Antigravity & Cursor)
+Because the core `ResolvedPDF` engine is built as a command-line utility, your AI coding assistants can use it! 
+
+Simply prompt your AI agent (like Antigravity): 
+*"Write your ideas/report into a `.resolved` file, and then run `convert_resolved.py` to generate the PDF for me."*
+
+The AI will automatically write the markdown, invoke the terminal script, and generate the final PDF directly into your workspace. Zero manual clicking required!
+
 ### ⚠️ Known Limitations
 - **External Files Context Menu:** If you open a `.resolved` file that is *outside* your currently open folder/workspace, VS Code occasionally restricts the right-click menu from appearing immediately. 
   - **Workaround:** Simply click to another open tab and click back to the `.resolved` file (or close and re-open the file). This refreshes the VS Code context menu and the "Convert to PDF" button will appear.
